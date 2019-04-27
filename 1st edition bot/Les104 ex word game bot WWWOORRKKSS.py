@@ -13,7 +13,7 @@ with codecs.open('list_of_cities_new.txt','r', "utf-8") as fileCL: #city_list.tx
         textCL = textCL.strip()
         all_cities.append(textCL)
     fileCL.close()
-print(all_cities)
+
 def start(bot, update):
     update.message.reply_text(
         "Привет, я робот, который умеет играть в города\n"
