@@ -13,7 +13,7 @@ with codecs.open('list_of_cities_new.txt','r', "utf-8") as fileCL: #city_list.tx
         textCL = textCL.strip()
         all_cities.append(textCL)
     fileCL.close()
-
+print(all_cities)
 def start(bot, update):
     update.message.reply_text(
         "Привет, я робот, который умеет играть в города\n"
@@ -64,12 +64,16 @@ def find_city(city, used_cities):
     for each_city in all_cities:
         if last_letter == each_city.lower()[0] and each_city not in used_cities:
             city_choices.append(each_city)
-    if len(city_choices) != 0:
+    if len(city_choices) == 1:
+        used_cities.append(city_choices[0])
+        return city_choices[0]    
+    if len(city_choices) > 1:
         number = randint(1, len(city_choices)-1)
         random_city = city_choices[number]
         city_choices.clear()
         used_cities.append(random_city)
         return random_city 
+    
     else:
         return 0
     
@@ -91,7 +95,7 @@ def first_response(bot, update, user_data):
         update.message.reply_text('Города нельзя повторять, введи новый город')
     if city_check == 0:
         update.message.reply_text('Я такого города не знаю. Попробуй ещё раз')
-        update.message.reply_text('Если ты думаешь, что такой город точно есть, ты можешь помочь мне стать умнее и научить меня новому! (Если хочешь, отправь "да" )')
+        update.message.reply_text('Если ты думаешь, что такой город точно есть, ты можешь помочь мне стать умнее и научить меня новому! (Если хочешь, отправь "да", если не хочешь -- "нет" )')
         return 3
     if last_letter_check == 0:
         #last_answer = used_cities[-1]
@@ -111,11 +115,11 @@ def first_response(bot, update, user_data):
         if output == 0:
             update.message.reply_text('Ой-ой, похоже я не знаю ни одного города на эту букву. Поздравляю, ты победитель!')
             update.message.reply_text('Можешь поиграть со мной ещё или проверить другие игры')
-            update.message.reply_text('Кстати, я буду очень рад, если ты поможешь мне стать умнее! Научи меня новым городам (Если хочешь, отправь "да" )')
+            update.message.reply_text('Кстати, я буду очень рад, если ты поможешь мне стать умнее! Научи меня новым городам (Если хочешь, отправь "да", если не хочешь -- "нет" )')
             return 3
         else:
             update.message.reply_text(output)
-            update.message.reply_text('Хочешь, я покажу тебе картинку этого города? (Если хочешь, отправь "да" )')
+            update.message.reply_text('Хочешь, я покажу тебе картинку этого города? (Если хочешь, отправь "да", если не хочешь -- "нет" )')
             return 2
            # user_data['attempt_number'] += 1
     print(user_data)
