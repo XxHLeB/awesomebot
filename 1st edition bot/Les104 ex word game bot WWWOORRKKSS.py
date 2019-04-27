@@ -7,11 +7,12 @@ import requests
 import json
 
 all_cities = []
-with codecs.open('city_list.txt','r', "utf-8") as fileCL:
+with codecs.open('list_of_cities_new.txt','r', "utf-8") as fileCL: #city_list.txt
     textCityList = fileCL.readlines()
     for textCL in textCityList:
         textCL = textCL.strip()
         all_cities.append(textCL)
+    fileCL.close()
 
 def start(bot, update):
     update.message.reply_text(
@@ -90,7 +91,8 @@ def first_response(bot, update, user_data):
         update.message.reply_text('Города нельзя повторять, введи новый город')
     if city_check == 0:
         update.message.reply_text('Я такого города не знаю. Попробуй ещё раз')
-        update.message.reply_text('Если ты думаешь, что такой город точно есть, ты можешь помочь мне стать умнее и научить меня этому городу!')
+        update.message.reply_text('Если ты думаешь, что такой город точно есть, ты можешь помочь мне стать умнее и научить меня новому! (Если хочешь, отправь "да" )')
+        return 3
     if last_letter_check == 0:
         #last_answer = used_cities[-1]
         last_letter = user_data['used_cities'][-1][-1]
@@ -109,8 +111,8 @@ def first_response(bot, update, user_data):
         if output == 0:
             update.message.reply_text('Ой-ой, похоже я не знаю ни одного города на эту букву. Поздравляю, ты победитель!')
             update.message.reply_text('Можешь поиграть со мной ещё или проверить другие игры')
-            update.message.reply_text('Кстати, я буду очень рад, если ты поможешь мне стать умнее! Научи меня новым городам командой /add_new_cities !')
-            game = False
+            update.message.reply_text('Кстати, я буду очень рад, если ты поможешь мне стать умнее! Научи меня новым городам (Если хочешь, отправь "да" )')
+            return 3
         else:
             update.message.reply_text(output)
             update.message.reply_text('Хочешь, я покажу тебе картинку этого города? (Если хочешь, отправь "да" )')
@@ -139,7 +141,7 @@ def show_picture(bot, update, user_data):
     
     
             toponym = response.json()["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
-        
+            print(toponym)
        
             ll, spn = get_ll_spn(toponym)  
             # Можно воспользоваться готовой фукнцией,
@@ -172,15 +174,17 @@ def show_picture(bot, update, user_data):
         update.message.reply_text('последним я назвал город "{}",'.format( user_data['used_cities'][-1]))
         update.message.reply_text(' тебе на букву "{}"'.format( last_letter))
         return 1
-    else:
+    elif response.lower() == 'нет':
         last_letter = user_data['used_cities'][-1][-1]
         if last_letter in ['ы', 'ь', 'ъ']:
-            last_letter = user_data['used_cities'][-1][        -2]
+            last_letter = user_data['used_cities'][-1][-2]
         update.message.reply_text("Ну ладно, давай играть дальше")
         update.message.reply_text('я назвал город "{}",'.format( user_data['used_cities'][-1]))
         update.message.reply_text(' тебе на букву "{}"'.format( last_letter))
         return 1
-
+    else:
+        update.message.reply_text('Извини, я не понял ответа. Так да или нет?')
+        return 2
 
 
 def get_ll_spn(toponym):
@@ -208,44 +212,80 @@ def get_ll_spn(toponym):
 
     return (ll, span)
 
-def geocoder(bot, update, user_data):
+def add_new_cities_question(bot, update, user_data):
+    response = update.message.text
+    if response.lower() == 'да':
+        update.message.reply_text('Благодарю, что помогаешь мне. Напиши город, который хочешь добавить')
+        return 4
+    elif response.lower() == 'нет':
+        if len(user_data['used_cities']) < 1:
+            update.message.reply_text("Ну ладно, давай играть дальше")
+            update.message.reply_text("Назови любой город")
+            return 1
+        else:
+            last_letter = user_data['used_cities'][-1][-1]
+            if last_letter in ['ы', 'ь', 'ъ']:
+                last_letter = user_data['used_cities'][-1][-2]
+            update.message.reply_text("Ну ладно, давай играть дальше")
+            update.message.reply_text('я назвал город "{}",'.format( user_data['used_cities'][-1]))
+            update.message.reply_text(' тебе на букву "{}"'.format( last_letter))
+            return 1
+    else:
+        update.message.reply_text('Извини, я не понял ответа. Так да или нет?')
+        return 3
+    
+def add_new_cities(bot, update, user_data):
+    global all_cities
+    city = update.message.text.lower()
+    update.message.reply_text('Ты хочешь добавить город {}'.format(city))
+    update.message.reply_text('Сейчас спрошу у Яндекс Карт, что они думают по поводу города {}'.format(city))
     try:
         geocoder_uri = geocoder_request_template = "http://geocode-maps.yandex.ru/1.x/"
         response = requests.get(geocoder_uri, params = {
             "format": "json",
-            "geocode": update.message.text#############
+            "geocode": city
         })
 
 
         toponym = response.json()["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
-    
+        #print(toponym)
    
-        ll, spn = get_ll_spn(toponym)  
-        # Можно воспользоваться готовой фукнцией,
-        # которую предлагалось сделать на уроках, посвященных HTTP-геокодеру.
-
-        static_api_request = "http://static-maps.yandex.ru/1.x/?ll={ll}&spn={spn}&l=map".format(**locals())
-        if not static_api_request:
-            print('nope')
-            update.message.reply_text("Ошибка выполнения запроса:")
-            update.message.reply_text(geocoder_request)
-            update.message.reply_text("Http статус:", response.status_code, "(", response.reason, ")")
-        try :
-            print(static_api_request)
-            bot.sendPhoto(
-                update.message.chat.id,  # Идентификатор чата. Куда посылать картинку.
-                # Ссылка на static API по сути является ссылкой на картинку.
-                static_api_request
-            )                             
-            # Телеграму можно передать прямо ее, не скачивая предварительно карту.
-        except  Exception as e:
-            update.message.reply_text(str(e))
-           
+        if toponym['metaDataProperty']['GeocoderMetaData']['kind'] == 'locality':
+            update.message.reply_text('Я спросил у Яндекс Карт, они  думают, что {} -- хороший город.'.format(city))
+            city = city[0].upper() + city[1:]
+            city_check = 0
+            for c in all_cities:
+                if c.lower() == city.lower():
+                        city_check = 1
+            if city_check == 0:
+                update.message.reply_text('Это то что мне нужно. я его запомню')
+                update.message.reply_text('Cпасибо, что мне помогаешь')
+                all_cities.append(city)
+                try:
+                    with codecs.open('list_of_cities_new.txt','a', "utf-8") as f: 
+                        print(f.write(str('\n' + city)))
+                        f.close()                    
+                except Exception:
+                    print('Ошибка записи файла')
+            if city_check == 1:
+                update.message.reply_text('Я уже знаю это город, но всё равно спасибо за помощь!')
+                         
+        else:
+            update.message.reply_text('Я спросил у Яндекс Карт, они не думают, что {} это город'.format(city))
+            
+       
+       
+        
     except:
-        #update.message.reply_text('noooope')
-        update.message.reply_text("Запрос не удалось выполнить. Проверьте правильность написания. Cкорее всего такого географического объекта не существует")
-                 
+        update.message.reply_text("Я спросил у Яндекс Карт, скорее всего такого географического объекта не существует")
+    
+    update.message.reply_text('Можешь добавить ещё города (Если хочешь, отправь "да" )') 
+    
+    return 3
+    
 
+    
+    
  
 def stop(bot, update, user_data):
     update.message.reply_text(
@@ -274,18 +314,23 @@ def main():
             # Функция читает ответ на второй вопрос и завершает диалог.
             2: [MessageHandler(Filters.text, show_picture, 
                            pass_user_data=True)],
-            3: [MessageHandler(Filters.text, geocoder, 
-                           pass_user_data=True)],            
+            3: [MessageHandler(Filters.text, add_new_cities_question, 
+                           pass_user_data=True)], 
+            4: [MessageHandler(Filters.text, add_new_cities, 
+                           pass_user_data=True)], 
+            
         },
      
         # Точка прерывания диалога. В данном случае — команда /stop.
         fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )    
     #dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("geocoder", geocoder)) 
+    #dp.add_handler(CommandHandler("add_new_cities", add_new_cities)) 
     
     dp.add_handler(conv_handler)
     dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("add_new_cities_question", add_new_cities_question)) 
+    dp.add_handler(CommandHandler("add_new_cities", add_new_cities)) 
     dp.add_handler(CommandHandler("first_response", first_response))
     dp.add_handler(CommandHandler("show_picture", show_picture))
     dp.add_handler(CommandHandler("stop", stop))
