@@ -3,6 +3,8 @@ from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
 from telegram.ext import CommandHandler, ConversationHandler
 import codecs
 from random import randint
+import requests
+import json
 
 all_cities = []
 with codecs.open('city_list.txt','r', "utf-8") as fileCL:
@@ -88,6 +90,7 @@ def first_response(bot, update, user_data):
         update.message.reply_text('Города нельзя повторять, введи новый город')
     if city_check == 0:
         update.message.reply_text('Я такого города не знаю. Попробуй ещё раз')
+        update.message.reply_text('Если ты думаешь, что такой город точно есть, ты можешь помочь мне стать умнее и научить меня этому городу!')
     if last_letter_check == 0:
         #last_answer = used_cities[-1]
         last_letter = user_data['used_cities'][-1][-1]
@@ -103,7 +106,6 @@ def first_response(bot, update, user_data):
         user_data['used_cities'].append(city)
         #print(user_data)
         output = find_city(city, user_data['used_cities'])
-        
         if output == 0:
             update.message.reply_text('Ой-ой, похоже я не знаю ни одного города на эту букву. Поздравляю, ты победитель!')
             update.message.reply_text('Можешь поиграть со мной ещё или проверить другие игры')
@@ -111,6 +113,8 @@ def first_response(bot, update, user_data):
             game = False
         else:
             update.message.reply_text(output)
+            update.message.reply_text('Хочешь, я покажу тебе картинку этого города? (Если хочешь, отправь "да" )')
+            return 2
            # user_data['attempt_number'] += 1
     print(user_data)
     #update.message.reply_text(city)
@@ -119,14 +123,128 @@ def first_response(bot, update, user_data):
 
  
 # Добавили словарь user_data в параметры.
-def second_response(bot, update, user_data):
-    weather = update.message.text
-    # Используем user_data в ответе.
-    update.message.reply_text(
-        "Спасибо за участие в опросе! Привет, {0}!".format(
-            user_data['locality']))  
-    return ConversationHandler.END
+def show_picture(bot, update, user_data):
+    response = update.message.text
+    if response.lower() == 'да':
+        city = user_data['used_cities'] [-1]
+        print(city)
+    
+        update.message.reply_text("Картинка города {}!".format(city)) 
+        try:
+            geocoder_uri = geocoder_request_template = "http://geocode-maps.yandex.ru/1.x/"
+            response = requests.get(geocoder_uri, params = {
+                "format": "json",
+                "geocode": city
+            })
+    
+    
+            toponym = response.json()["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+        
+       
+            ll, spn = get_ll_spn(toponym)  
+            # Можно воспользоваться готовой фукнцией,
+            # которую предлагалось сделать на уроках, посвященных HTTP-геокодеру.
+    
+            static_api_request = "http://static-maps.yandex.ru/1.x/?ll={ll}&spn={spn}&l=map".format(**locals())
+            if not static_api_request:
+                print('nope')
+                update.message.reply_text("Ошибка выполнения запроса:")
+                update.message.reply_text(geocoder_request)
+                update.message.reply_text("Http статус:", response.status_code, "(", response.reason, ")")
+            try :
+                print(static_api_request)
+               # update.message.reply_text(static_api_request)
+                bot.sendPhoto(
+                    update.message.chat.id,  # Идентификатор чата. Куда посылать картинку.
+                    # Ссылка на static API по сути является ссылкой на картинку.
+                    static_api_request
+                )                             
+                # Телеграму можно передать прямо ее, не скачивая предварительно карту.
+            except  Exception as e:
+                update.message.reply_text(str(e))
+           
+        except:
+            update.message.reply_text("Запрос не удалось выполнить. Проверьте правильность написания. Cкорее всего такого географического объекта не существует")
+        last_letter = user_data['used_cities'][-1][-1]
+        if last_letter in ['ы', 'ь', 'ъ']:
+            last_letter = user_data['used_cities'][-1][-2]
+        update.message.reply_text("Давай играть дальше!")
+        update.message.reply_text('последним я назвал город "{}",'.format( user_data['used_cities'][-1]))
+        update.message.reply_text(' тебе на букву "{}"'.format( last_letter))
+        return 1
+    else:
+        last_letter = user_data['used_cities'][-1][-1]
+        if last_letter in ['ы', 'ь', 'ъ']:
+            last_letter = user_data['used_cities'][-1][        -2]
+        update.message.reply_text("Ну ладно, давай играть дальше")
+        update.message.reply_text('я назвал город "{}",'.format( user_data['used_cities'][-1]))
+        update.message.reply_text(' тебе на букву "{}"'.format( last_letter))
+        return 1
 
+
+
+def get_ll_spn(toponym):
+    # Координаты центра топонима:
+    toponym_coodrinates = toponym["Point"]["pos"]
+    # Долгота и Широта :
+    toponym_longitude, toponym_lattitude = toponym_coodrinates.split(" ")
+
+    # Собираем координаты в параметр ll
+    ll = ",".join([toponym_longitude, toponym_lattitude])
+
+    # Рамка вокруг объекта:
+    envelope = toponym["boundedBy"]["Envelope"]
+
+    # левая, нижняя, правая и верхняя границы из координат углов:
+    l,b = envelope["lowerCorner"].split(" ")
+    r,t = envelope["upperCorner"].split(" ")
+  
+    # Вычисляем полуразмеры по вертикали и горизонтали
+    dx = abs(float(l) - float(r)) / 2.0
+    dy = abs(float(t) - float(b)) / 2.0
+
+    # Собираем размеры в параметр span
+    span = "{dx},{dy}".format(**locals())
+
+    return (ll, span)
+
+def geocoder(bot, update, user_data):
+    try:
+        geocoder_uri = geocoder_request_template = "http://geocode-maps.yandex.ru/1.x/"
+        response = requests.get(geocoder_uri, params = {
+            "format": "json",
+            "geocode": update.message.text#############
+        })
+
+
+        toponym = response.json()["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+    
+   
+        ll, spn = get_ll_spn(toponym)  
+        # Можно воспользоваться готовой фукнцией,
+        # которую предлагалось сделать на уроках, посвященных HTTP-геокодеру.
+
+        static_api_request = "http://static-maps.yandex.ru/1.x/?ll={ll}&spn={spn}&l=map".format(**locals())
+        if not static_api_request:
+            print('nope')
+            update.message.reply_text("Ошибка выполнения запроса:")
+            update.message.reply_text(geocoder_request)
+            update.message.reply_text("Http статус:", response.status_code, "(", response.reason, ")")
+        try :
+            print(static_api_request)
+            bot.sendPhoto(
+                update.message.chat.id,  # Идентификатор чата. Куда посылать картинку.
+                # Ссылка на static API по сути является ссылкой на картинку.
+                static_api_request
+            )                             
+            # Телеграму можно передать прямо ее, не скачивая предварительно карту.
+        except  Exception as e:
+            update.message.reply_text(str(e))
+           
+    except:
+        #update.message.reply_text('noooope')
+        update.message.reply_text("Запрос не удалось выполнить. Проверьте правильность написания. Cкорее всего такого географического объекта не существует")
+                 
 
  
 def stop(bot, update, user_data):
@@ -154,19 +272,22 @@ def main():
             1: [MessageHandler(Filters.text, first_response, 
                            pass_user_data=True)],
             # Функция читает ответ на второй вопрос и завершает диалог.
-            2: [MessageHandler(Filters.text, second_response, 
-                           pass_user_data=True)]       
+            2: [MessageHandler(Filters.text, show_picture, 
+                           pass_user_data=True)],
+            3: [MessageHandler(Filters.text, geocoder, 
+                           pass_user_data=True)],            
         },
      
         # Точка прерывания диалога. В данном случае — команда /stop.
         fallbacks=[CommandHandler('stop', stop, pass_user_data=True)]
     )    
- 
+    #dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("geocoder", geocoder)) 
     
     dp.add_handler(conv_handler)
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("first_response", first_response))
-    dp.add_handler(CommandHandler("second_response", second_response))
+    dp.add_handler(CommandHandler("show_picture", show_picture))
     dp.add_handler(CommandHandler("stop", stop))
    
     # Запускаем цикл приема и обработки сообщений.
