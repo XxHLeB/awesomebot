@@ -15,9 +15,14 @@ with codecs.open('list_of_cities_new.txt','r', "utf-8") as fileCL: #city_list.tx
     fileCL.close()
 
 def start(bot, update):
+    global all_cities
     update.message.reply_text(
-        "Привет, я робот, который умеет играть в города\n"
-        "Вы можете прервать игру, послав команду /stop.\n"
+        "Привет, я робот, который умеет играть в города!")
+    update.message.reply_text(
+        'На данный момент я знаю {} городов,'.format(len(all_cities)))
+    update.message.reply_text(
+        'но ты также можешь помочь мне узнать новые города\n'
+        "Игру можно прервать, послав команду /stop.\n"
         "Назови город")
     
    
@@ -294,6 +299,21 @@ def add_new_cities(bot, update, user_data):
 def stop(bot, update, user_data):
     update.message.reply_text(
         "Жаль. А было бы интерсно поиграть. Всего доброго!")
+    if len(user_data['used_cities']) > 0:
+        update.message.reply_text(
+            "Вот какие города мы назвали в ходе игры:")
+        output_list = []
+        for city in user_data['used_cities']:
+            city = city[0].upper() + city[1:].lower()
+            output_list.append(city)
+        update.message.reply_text( ' --> '.join(output_list))
+        update.message.reply_text(
+            "Количество городов: {} ".format(str(len(output_list))))
+        if len(output_list) % 2 == 1:
+            score = len(output_list) // 2 + 1
+        else:
+            score = len(output_list) / 2
+            update.message.reply_text( 'Твой счёт -- {}'.format(int(score)))
     user_data.clear()
     return ConversationHandler.END  # Константа, означающая конец диалога.
 
