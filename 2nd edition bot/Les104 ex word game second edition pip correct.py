@@ -345,6 +345,7 @@ def add_new_cities(bot, update, user_data):
                 user_data['added_cities'].append(city)
                 try:
                     with codecs.open('list_of_cities_new.txt','a', "utf-8") as f: 
+                        print(f.write(str('\n' + city)))
                         f.close()                    
                 except Exception:
                     print('Ошибка записи файла')
