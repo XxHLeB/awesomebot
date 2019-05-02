@@ -237,7 +237,7 @@ def first_response(bot, update, user_data):
             update.message.reply_text(output)
             update.message.reply_text('/show_picture - посмотреть карту двух последних названных городов\n'
                                       '/wiki - справка об этих городах из Википедии\n'
-                                      '/full_wiki - полная статья об этих городах из Википедии (робот-спамер)\n'
+                                      '/full_wiki - полная статья из Википедии (робот-спамер)\n'
                                       '/skip - пропустить ход\n'
                                       '/tell_me_hint - посмотреть подсказки')
     return 1
@@ -247,7 +247,6 @@ def skip(bot, update, user_data):
     update.message.reply_text('ладно, я схожу за тебя,\n'
                               'но в следущий раз постарайся ответить сам')
     output = find_city(user_data['used_cities'][-1], user_data['used_cities'])
-    print(output)
     if output == 0:
         update.message.reply_text('Ой-ой, похоже я не знаю ни одного города на эту букву. Поздравляю, ты победитель!')
         if len(user_data['used_cities']) > 0:
@@ -260,7 +259,6 @@ def skip(bot, update, user_data):
             update.message.reply_text( ' --> '.join(output_list))
             update.message.reply_text(
                 "Количество городов: {} ".format(str(len(output_list))))
-            print(user_data['skipped'])
             if len(user_data['used_cities']) % 2 == 1:
                 score = len(user_data['used_cities']) // 2 + 1 - user_data['skipped']
             else:
@@ -303,7 +301,7 @@ def skip(bot, update, user_data):
         update.message.reply_text(output)
         update.message.reply_text('/show_picture - посмотреть     карту двух последних названных городов\n'
                                       '/wiki - справка об этих городах из Википедии\n'
-                                      '/full_wiki - полная статья об этих городах из Википедии (робот-спамер)\n'
+                                      '/full_wiki - полная статья из Википедии (робот-спамер)\n'
                                       '/skip - пропустить ход\n'
                                       '/tell_me_hint - посмотреть подсказки')
     return 1
@@ -606,11 +604,9 @@ def wiki(bot, update, user_data):
         for city in cities:
             if check_language(user_data['used_cities'][-2]) == 'english':
                 request = str(wikipedia.search(city)[0] + ' (city)')
-                print(wikipedia.search(city))
             elif check_language(user_data['used_cities'][-2]) == 'russian':
                 wikipedia.set_lang("ru")
                 request = wikipedia.search(city + ' город')[0]
-                print(wikipedia.search(city + ' город'))
                 if request == None:
                     update.message.reply_text('Похоже, про этот город нет информации в Википедии')
             page = wikipedia.page(request)
@@ -653,13 +649,10 @@ def full_wiki(bot, update, user_data):
         for city in cities:
             if check_language(user_data['used_cities'][-2]) == 'english':
                 request = str(wikipedia.search(city)[0] + ' (city)')
-                print(wikipedia.search(city))
-                 
             elif check_language(user_data['used_cities'][-2]) == 'russian':
                 wikipedia.set_lang("ru")
                 #request = str(wikipedia.search(city)[0] + ' (город)')
                 request = wikipedia.search(city + ' город')[0]
-                print(wikipedia.search(city + ' город'))
                 if request == None:
                     update.message.reply_text('Похоже, про этот город нет информации в Википедии')
             page = wikipedia.page(request)
